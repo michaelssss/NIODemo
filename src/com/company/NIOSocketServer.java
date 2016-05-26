@@ -14,7 +14,9 @@ import java.util.Set;
 public class NIOSocketServer
 {
     private static ByteBuffer buffer = ByteBuffer.allocate(20);
+
     private static char[] output = new char[200];
+
     private static int flag = 0;
 
     public static void main(String[] args)
@@ -55,35 +57,45 @@ public class NIOSocketServer
                     }
                     if (k.isReadable())
                     {
-                        
-                        
+
                         // Read the data
                         SocketChannel sc2 = (SocketChannel)k.channel();
-
+                        String ip = sc2.getRemoteAddress().toString();
                         while (true)
                         {
                             buffer.clear();
                             int num = sc2.read(buffer);
                             if (num <= 0)
                                 break;
-                            
+
                             byte tm = buffer.get(0);
-                            if (tm != '`')
+                            if (tm != 13)
                             {
+                                if (tm == 27)
+                                {
+                                    sc2.write(ByteBuffer.wrap("\r\nGood Bye\r\n".getBytes()));
+                                    System.out.println("IP" + sc2.getRemoteAddress() + " Disconnect");
+                                    sc2.close();
+                                    break;
+                                }
                                 flag++;
                                 output[flag] = (char)tm;
+
                             }
-                            else if(tm=='`')
+                            else if (tm == 13)
                             {
-                                sc2.write(ByteBuffer.wrap(("You Have Write This:" +
-                                    new String(output).trim()+"\r\n").getBytes()));
+                                sc2.write(ByteBuffer.wrap(("\r\n" + "You Have Write This:" +
+                                    new String(output).trim() + "\r\n").getBytes()));
                                 System.out.println("New Message:" + new String(output).trim());
                                 output = new char[200];
-                                flag=0;
+                                flag = 0;
                             }
                         }
-                        if (sc2.read(buffer) == -1)
+                        if (sc2.isOpen() && sc2.read(buffer) == -1)
+                        {
+                            System.out.println("IP" + ip + " lost connection");
                             sc2.close();
+                        }
                     }
                 }
 
@@ -91,11 +103,7 @@ public class NIOSocketServer
         }
         catch (IOException ie)
         {
-
+            ie.printStackTrace();
         }
-    }
-    public static char byteToChar(byte[] b) {
-        char c = (char) (((b[0] & 0xFF) << 8) | (b[1] & 0xFF));
-        return c;
     }
 }
